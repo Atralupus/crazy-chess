@@ -1,0 +1,31 @@
+{
+    "folders": [
+        {
+            "name": "Root",
+            "path": "../"
+        },
+        {
+            "name": "grpc",
+            "path": "../grpc",
+        }
+    ],
+    "extensions": {
+        "recommendations": [
+            "rust-lang.rust-analyzer",
+            "fill-labs.dependi",
+            "tamasfe.even-better-toml",
+            "vadimcn.vscode-lldb",
+        ]
+    },
+    "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "files.exclude": {
+            "**/target": true,
+            "**/node_modules": true
+        },
+        "[jsonc]": {
+            "editor.defaultFormatter": "vscode.json-language-features"
+        },
+    }
+}

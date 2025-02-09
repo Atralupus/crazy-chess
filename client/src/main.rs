@@ -1,81 +1,98 @@
 use bevy::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
-use bevy::sprite::{Wireframe2dConfig, Wireframe2dPlugin};
+
+const BOARD_SIZE: usize = 8;
+const TILE_SIZE: f32 = 80.0;
+const BOARD_OFFSET: f32 = TILE_SIZE * (BOARD_SIZE as f32) / 2.0;
+
+#[derive(Component)]
+struct Pawn {
+    is_white: bool,
+}
 
 fn main() {
-    let mut app = App::new();
-    app.add_plugins((
-        DefaultPlugins,
-        #[cfg(not(target_arch = "wasm32"))]
-        Wireframe2dPlugin,
-    ))
-    .add_systems(Startup, setup);
-    #[cfg(not(target_arch = "wasm32"))]
-    app.add_systems(Update, toggle_wireframe);
-    app.run();
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_systems(Startup, setup)
+        .add_systems(Update, move_pawn)
+        .run();
 }
 
-const X_EXTENT: f32 = 900.;
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2d::default());
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-) {
-    commands.spawn(Camera2d);
+    for row in 0..BOARD_SIZE {
+        for col in 0..BOARD_SIZE {
+            let is_black = (row + col) % 2 == 1;
+            let color = if is_black {
+                Color::srgb(0.2, 0.2, 0.2)
+            } else {
+                Color::srgb(0.9, 0.9, 0.9)
+            };
 
-    let shapes = [
-        meshes.add(Circle::new(50.0)),
-        meshes.add(CircularSector::new(50.0, 1.0)),
-        meshes.add(CircularSegment::new(50.0, 1.25)),
-        meshes.add(Ellipse::new(25.0, 50.0)),
-        meshes.add(Annulus::new(25.0, 50.0)),
-        meshes.add(Capsule2d::new(25.0, 50.0)),
-        meshes.add(Rhombus::new(75.0, 100.0)),
-        meshes.add(Rectangle::new(50.0, 100.0)),
-        meshes.add(RegularPolygon::new(50.0, 6)),
-        meshes.add(Triangle2d::new(
-            Vec2::Y * 50.0,
-            Vec2::new(-50.0, -50.0),
-            Vec2::new(50.0, -50.0),
-        )),
-    ];
-    let num_shapes = shapes.len();
-
-    for (i, shape) in shapes.into_iter().enumerate() {
-        // Distribute colors evenly across the rainbow.
-        let color = Color::hsl(360. * i as f32 / num_shapes as f32, 0.95, 0.7);
-
-        commands.spawn((
-            Mesh2d(shape),
-            MeshMaterial2d(materials.add(color)),
-            Transform::from_xyz(
-                // Distribute shapes from -X_EXTENT/2 to +X_EXTENT/2.
-                -X_EXTENT / 2. + i as f32 / (num_shapes - 1) as f32 * X_EXTENT,
-                0.0,
-                0.0,
-            ),
-        ));
+            commands.spawn((
+                Sprite::from_color(color, Vec2::splat(TILE_SIZE)),
+                Transform::from_xyz(
+                    col as f32 * TILE_SIZE - BOARD_OFFSET + TILE_SIZE / 2.0,
+                    row as f32 * TILE_SIZE - BOARD_OFFSET + TILE_SIZE / 2.0,
+                    0.0,
+                ),
+            ));
+        }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    commands.spawn((
-        Text::new("Press space to toggle wireframes"),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(12.0),
-            left: Val::Px(12.0),
-            ..default()
-        },
-    ));
+    for col in 0..BOARD_SIZE {
+        commands.spawn((
+            Sprite::from_color(Color::srgb(0.0, 0.0, 0.0), Vec2::splat(TILE_SIZE * 0.6)),
+            Transform::from_xyz(
+                col as f32 * TILE_SIZE - BOARD_OFFSET + TILE_SIZE / 2.0,
+                6 as f32 * TILE_SIZE - BOARD_OFFSET + TILE_SIZE / 2.0,
+                1.0,
+            ),
+            Pawn { is_white: false },
+        ));
+
+        commands.spawn((
+            Sprite::from_color(Color::srgb(1.0, 1.0, 1.0), Vec2::splat(TILE_SIZE * 0.6)),
+            Transform::from_xyz(
+                col as f32 * TILE_SIZE - BOARD_OFFSET + TILE_SIZE / 2.0,
+                1 as f32 * TILE_SIZE - BOARD_OFFSET + TILE_SIZE / 2.0,
+                1.0,
+            ),
+            Pawn { is_white: true },
+        ));
+    }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn toggle_wireframe(
-    mut wireframe_config: ResMut<Wireframe2dConfig>,
-    keyboard: Res<ButtonInput<KeyCode>>,
+fn move_pawn(
+    mut query: Query<(&mut Transform, &Pawn)>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    window_query: Query<&Window>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
 ) {
-    if keyboard.just_pressed(KeyCode::Space) {
-        wireframe_config.global = !wireframe_config.global;
+    if !buttons.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    let window = window_query.single();
+    let (camera, camera_transform) = camera_query.single();
+
+    if let Some(cursor_pos) = window.cursor_position() {
+        match camera.viewport_to_world_2d(camera_transform, cursor_pos) {
+            Ok(world_pos) => {
+                for (mut transform, pawn) in query.iter_mut() {
+                    let pawn_pos = transform.translation.truncate();
+
+                    if pawn_pos.distance(world_pos) < TILE_SIZE / 2.0 {
+                        let direction = if pawn.is_white { 1.0 } else { -1.0 };
+                        transform.translation.y += TILE_SIZE * direction;
+                        break;
+                    }
+                }
+            }
+            Err(_) => {
+                return;
+            }
+        }
     }
 }

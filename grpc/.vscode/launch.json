@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Server",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/server",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": [
+                "rust"
+            ],
+            "preLaunchTask": "Cargo Build"
+        },
+        {
+            "name": "Debug Client",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/client",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": [
+                "rust"
+            ],
+            "preLaunchTask": "Cargo Build"
+        }
+    ]
+}

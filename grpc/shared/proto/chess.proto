@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package chess;
+
+service ChessService {
+    rpc MovePiece (MoveRequest) returns (MoveResponse);
+}
+
+message MoveRequest {
+    uint32 from = 1;
+    uint32 to = 2;
+}
+
+message MoveResponse {
+    bool success = 1;
+}

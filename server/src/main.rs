@@ -3,6 +3,7 @@ use chess::{MoveRequest, MoveResponse};
 use shared::board::Board;
 use shared::mov::Move;
 use tonic::{transport::Server, Request, Response, Status};
+use tonic_web::GrpcWebLayer;
 
 pub mod chess {
     tonic::include_proto!("chess");
@@ -40,6 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Chess gRPC server listening on {}", addr);
 
     Server::builder()
+        .accept_http1(true)
+        .layer(GrpcWebLayer::new())
         .add_service(ChessServiceServer::new(chess_server))
         .serve(addr)
         .await?;
